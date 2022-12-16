@@ -19,6 +19,7 @@ num-traits = "0.2"
 solana-program = "1.14.10"
 spl-math = { version = "0.1", features = [ "no-entrypoint" ] }
 spl-token = { version = "3.5", features = [ "no-entrypoint" ] }
+spl-associated-token-account = { version = "1.1.2" }
 thiserror = "1.0"
 arbitrary = { version = "1.0", features = ["derive"], optional = true }
 roots = { version = "0.0.7", optional = true }

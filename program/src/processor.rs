@@ -2,7 +2,7 @@
 
 use crate::{
     error::Errors,
-    instruction::SwapInstructions,
+    instruction::Instructions,
     // event::LendingEvent,
     state::{Swap, InitSwapParams},
     // tools::{
@@ -15,6 +15,7 @@ use crate::{
 };
 use num_traits::FromPrimitive;
 use solana_program::{
+    system_instruction,
     account_info::{next_account_info, AccountInfo},
     decode_error::DecodeError,
     entrypoint::ProgramResult,
@@ -36,24 +37,89 @@ pub fn process_instruction(
     accounts: &[AccountInfo],
     input: &[u8],
 ) -> ProgramResult {
-    let instruction = SwapInstructions::try_from_slice(input)
+    let instruction = Instructions::try_from_slice(input)
         .map_err(|_| ProgramError::InvalidInstructionData)?;
 
     msg!("PROGRAM-INSTRUCTION: {:?}", instruction);
     match instruction {
-        SwapInstructions::InitSwap {
+        Instructions::InitSwap {
             owner,
             swapping_rate_numerator,
             swapping_rate_denominator
         } => {
             process_init_swap(program_id, accounts, owner, swapping_rate_numerator, swapping_rate_denominator)
         }
-        SwapInstructions::SwapSOLToTokens {
-            amountSOL
+
+        Instructions::Deposit { amount_a, amount_b } => {
+            process_deposit(program_id, accounts, amount_a, amount_b)
+        }
+        Instructions::SwapSOLToTokens {
+            amount_a,
         } => {
-            process_swap_sol_to_tokens(program_id, accounts, amountSOL)
+            process_swap_sol_to_tokens(program_id, accounts,amount_a,
+            )
         }
     }
+}
+
+fn process_deposit(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    amount_a: u64,
+    amount_b: u64
+) -> ProgramResult {
+    if amount_a == 0 || amount_b == 0 {
+        return Err(Errors::InvalidAmount.into());
+    }
+
+    let account_info_iter = &mut accounts.iter();
+    let swap_info = next_account_info(account_info_iter)?;
+    let token_program_id = next_account_info(account_info_iter)?;
+    let user_transfer_authority_info = next_account_info(account_info_iter)?;
+    let src_token_a_account_info = next_account_info(account_info_iter)?;
+    let dest_token_a_reserve_info = next_account_info(account_info_iter)?;
+    let src_token_b_account_info = next_account_info(account_info_iter)?;
+    let dest_token_b_reserve_info = next_account_info(account_info_iter)?;
+
+    if swap_info.owner != program_id {
+        return Err(Errors::InvalidAccountOwner.into());
+    }
+
+    let mut swap = Swap::unpack(&swap_info.data.borrow())?;
+    if &swap.token_program_id != token_program_id.key {
+        return Err(Errors::InvalidTokenProgram.into());
+    }
+
+    if &swap.token_a_reserve != dest_token_a_reserve_info.key {
+        return Err(Errors::InvalidAccountInput.into());
+    }
+    if &swap.token_b_reserve != dest_token_b_reserve_info.key {
+        return Err(Errors::InvalidAccountInput.into());
+    }
+
+    spl_token_transfer(TokenTransferParams {
+        source: src_token_a_account_info.clone(),
+        destination: dest_token_a_reserve_info.clone(),
+        amount: amount_a,
+        authority: user_transfer_authority_info.clone(),
+        authority_signer_seeds: &[],
+        token_program: token_program_id.clone(),
+    })?;
+
+    spl_token_transfer(TokenTransferParams {
+        source: src_token_b_account_info.clone(),
+        destination: dest_token_b_reserve_info.clone(),
+        amount: amount_b,
+        authority: user_transfer_authority_info.clone(),
+        authority_signer_seeds: &[],
+        token_program: token_program_id.clone(),
+    })?;
+
+    swap.a_balance += amount_a;
+    swap.b_balance += amount_b;
+    Swap::pack(swap, &mut swap_info.data.borrow_mut())?;
+
+    Ok(())
 }
 
 fn process_swap_sol_to_tokens(
@@ -73,49 +139,49 @@ fn process_swap_sol_to_tokens(
     let swapping_token_reserve_info = next_account_info(account_info_iter)?;
     let destination_token_account_info = next_account_info(account_info_iter)?;
 
-    if swap_info.owner != program_id {
-        return Err(Errors::InvalidAccountOwner.into());
-    }
+    // if swap_info.owner != program_id {
+    //     return Err(Errors::InvalidAccountOwner.into());
+    // }
 
-    let mut swap = Swap::unpack(&swap_info.data.borrow())?;
-    if &swap.token_program_id != token_program_id.key {
-        return Err(Errors::InvalidTokenProgram.into());
-    }
+    // let mut swap = Swap::unpack(&swap_info.data.borrow())?;
+    // if &swap.token_program_id != token_program_id.key {
+    //     return Err(Errors::InvalidTokenProgram.into());
+    // }
 
-    let authority_signer_seeds = &[
-        swap_info.key.as_ref(),
-        &[swap.bump_seed],
-    ];
-    let swap_authority_expected_pubkey = Pubkey::create_program_address(authority_signer_seeds, program_id)?;
-    if &swap_authority_expected_pubkey != swap_authority_info.key {
-        return Err(Errors::InvalidAuthorityPubkey.into());
-    }
+    // let authority_signer_seeds = &[
+    //     swap_info.key.as_ref(),
+    //     &[swap.bump_seed],
+    // ];
+    // let swap_authority_expected_pubkey = Pubkey::create_program_address(authority_signer_seeds, program_id)?;
+    // if &swap_authority_expected_pubkey != swap_authority_info.key {
+    //     return Err(Errors::InvalidAuthorityPubkey.into());
+    // }
 
-    if &swap.swapping_token_reserve != swapping_token_reserve_info.key {
-        return Err(Errors::InvalidAccountInput.into());
-    }
+    // if &swap.token_a_reserve != swapping_token_reserve_info.key {
+    //     return Err(Errors::InvalidAccountInput.into());
+    // }
 
-    let amount_token_out = amount_SOL * swap.swapping_rate_numerator / swap.swapping_rate_denominator;
-    if amount_token_out == 0 {
-        return Err(Errors::AmountOutTooLess.into());
-    }
-    if amount_token_out > swap.token_balance {
-        return Err(Errors::AmountOutNotEnough.into());
-    }
+    // let amount_token_out = amount_SOL * swap.swapping_rate_numerator / swap.swapping_rate_denominator;
+    // if amount_token_out == 0 {
+    //     return Err(Errors::AmountOutTooLess.into());
+    // }
+    // if amount_token_out > swap.token_balance {
+    //     return Err(Errors::AmountOutNotEnough.into());
+    // }
 
-    transfer_lamports(user_transfer_authority_info, swap_info, amount_SOL);
-    spl_token_transfer(TokenTransferParams {
-        source: swapping_token_reserve_info.clone(),
-        destination: destination_token_account_info.clone(),
-        amount: amount_token_out,
-        authority: swap_authority_info.clone(),
-        authority_signer_seeds,
-        token_program: token_program_id.clone(),
-    })?;
+    // transfer_lamports(user_transfer_authority_info, swap_info, amount_SOL);
+    // spl_token_transfer(TokenTransferParams {
+    //     source: swapping_token_reserve_info.clone(),
+    //     destination: destination_token_account_info.clone(),
+    //     amount: amount_token_out,
+    //     authority: swap_authority_info.clone(),
+    //     authority_signer_seeds,
+    //     token_program: token_program_id.clone(),
+    // })?;
 
-    swap.sol_balance += amount_SOL;
-    swap.token_balance -= amount_token_out;
-    Swap::pack(swap, &mut swap_info.data.borrow_mut())?;
+    // swap.sol_balance += amount_SOL;
+    // swap.token_balance -= amount_token_out;
+    // Swap::pack(swap, &mut swap_info.data.borrow_mut())?;
 
     Ok(())
 }
@@ -137,8 +203,10 @@ fn process_init_swap(
     let rent = &Rent::from_account_info(rent_info)?;
     let token_program_id = next_account_info(account_info_iter)?;
     let swap_authority_info = next_account_info(account_info_iter)?;
-    let token_mint_info = next_account_info(account_info_iter)?;
-    let token_reserve_info = next_account_info(account_info_iter)?;
+    let token_a_mint_info = next_account_info(account_info_iter)?;
+    let token_a_reserve_info = next_account_info(account_info_iter)?;
+    let token_b_mint_info = next_account_info(account_info_iter)?;
+    let token_b_reserve_info = next_account_info(account_info_iter)?;
 
     assert_rent_exempt(rent, swap_info)?;
     let mut swap = assert_uninitialized::<Swap>(swap_info)?;
@@ -146,10 +214,10 @@ fn process_init_swap(
         return Err(Errors::InvalidAccountOwner.into());
     }
 
-    if token_mint_info.owner != token_program_id.key {
+    if token_a_mint_info.owner != token_program_id.key || token_b_mint_info.owner != token_program_id.key {
         return Err(Errors::InvalidAccountOwner.into());
     }
-
+    
     // check provided authority account
     let bump_seed = Pubkey::find_program_address(&[swap_info.key.as_ref()], program_id).1;
     let authority_signer_seeds = &[
@@ -165,16 +233,26 @@ fn process_init_swap(
         bump_seed,
         owner,
         token_program_id: *token_program_id.key,
-        swapping_token_mint: *token_mint_info.key,
-        swapping_token_reserve: *token_reserve_info.key,
+        token_a_mint: *token_a_mint_info.key,
+        token_a_reserve: *token_a_reserve_info.key,
+        token_b_mint: *token_b_mint_info.key,
+        token_b_reserve: *token_b_reserve_info.key,
         swapping_rate_numerator,
         swapping_rate_denominator,
     });
     Swap::pack(swap, &mut swap_info.data.borrow_mut())?;
 
     spl_token_init_account(TokenInitializeAccountParams {
-        account: token_reserve_info.clone(),
-        mint: token_mint_info.clone(),
+        account: token_a_reserve_info.clone(),
+        mint: token_a_mint_info.clone(),
+        owner: swap_authority_info.clone(),
+        rent: rent_info.clone(),
+        token_program: token_program_id.clone(),
+    })?;
+
+    spl_token_init_account(TokenInitializeAccountParams {
+        account: token_b_reserve_info.clone(),
+        mint: token_b_mint_info.clone(),
         owner: swap_authority_info.clone(),
         rent: rent_info.clone(),
         token_program: token_program_id.clone(),

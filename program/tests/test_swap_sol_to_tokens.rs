@@ -1,6 +1,7 @@
 #![cfg(feature = "test-sbf")]
 
 mod helpers;
+
 use helpers::*;
 use solana_program::{program_pack::Pack, pubkey::Pubkey,};
 use solana_program_test::*;
@@ -20,7 +21,7 @@ use spl_token::{
 };
 
 #[tokio::test]
-async fn test_init_swap() {
+async fn test_swap_sol_to_tokens() {
     let test = ProgramTest::new(
         "swapping",
         swapping::id(),
@@ -85,29 +86,74 @@ async fn test_init_swap() {
     ).await;
     banks_client.process_transaction(tx).await;
 
-    let swap_account: Account = banks_client
-        .get_account(swap_account_info.pubkey)
-        .await
-        .unwrap()
-        .unwrap();
+    let token_ata = create_associated_token_address(
+        &mut banks_client, 
+        &payer,
+        payer.pubkey(),
+        token_b_mint.pubkey
+    ).await;
 
-    let swap_data = Swap::unpack(&swap_account.data[..]).unwrap();
-    assert_eq!(swap_data.version, PROGRAM_VERSION);
-    assert_eq!(swap_data.swapping_rate_numerator, swapping_rate_numerator);
-    assert_eq!(swap_data.swapping_rate_denominator, swapping_rate_denominator);
+    mint_to(
+        &mut banks_client, 
+        &payer,
+        &token_b_mint.pubkey,
+        &token_ata.pubkey,
+        &payer,
+        1000000000000
+    ).await;
 
-    // return error if swap was initialized
-    // let tx = init_swap(
-    //     &mut banks_client, 
-    //     &payer,
-    //     swapping_rate_numerator,
-    //     swapping_rate_denominator,
-    //     swap_account_info.pubkey,
-    //     swap_account_info.authority,
-    //     token_mint.pubkey,
-    //     token_reserve_info.pubkey
-    // ).await;
-    // assert!(banks_client.process_transaction(tx).await.is_err());
+    let wrap_sol_ata = wrap_sol(
+        &mut banks_client, 
+        &payer,
+        &payer.pubkey(),
+        1000000000000
+    ).await;
+
+    let tx = deposit(
+        &mut banks_client, 
+        &payer,
+        10000,
+        10000,
+        swap_account_info.pubkey,
+        payer.pubkey(),
+        wrap_sol_ata.pubkey,
+        token_a_reserve_info.pubkey,
+        token_ata.pubkey,
+        token_b_reserve_info.pubkey
+    ).await;
+    banks_client.process_transaction(tx).await;
 
 }
 
+pub async fn deposit(
+    banks_client: &mut BanksClient, 
+    payer: &Keypair,
+    amount_a: u64,
+    amount_b: u64,
+    swap_pubkey: Pubkey,
+    user_pubkey: Pubkey,
+    src_token_a_account: Pubkey,
+    dest_token_a_reserve: Pubkey,
+    src_token_b_account: Pubkey,
+    dest_token_b_reserve: Pubkey
+) -> Transaction {
+    let transaction = Transaction::new_signed_with_payer(
+        &[
+            swapping::instruction::deposit(
+                swapping::id(),
+                amount_a,
+                amount_b,
+                swap_pubkey,
+                user_pubkey,
+                src_token_a_account,
+                dest_token_a_reserve,
+                src_token_b_account,
+                dest_token_b_reserve
+            )
+        ],
+        Some(&payer.pubkey()),
+        &[payer],
+        banks_client.get_latest_blockhash().await.unwrap()
+    );
+    transaction
+}
