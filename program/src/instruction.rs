@@ -23,7 +23,7 @@ pub enum SwapInstructions {
     ///   2. `[]` Token program id.
     ///   3. `[]` Derived swap authority.
     ///   4. `[]` Swapping token mint.
-    ///   5. `[]` Swapping token reserve.
+    ///   5. `[writable]` Swapping token reserve.
     InitSwap {
         owner: Pubkey,
         swapping_rate_numerator: u64,
@@ -44,3 +44,35 @@ pub enum SwapInstructions {
         amountSOL: u64
     },
 }
+
+
+/// Creates an 'InitSwap' instruction.
+pub fn init_swap(
+    program_id: Pubkey,
+    owner: Pubkey,
+    swapping_rate_numerator: u64,
+    swapping_rate_denominator: u64,
+    swap_pubkey: Pubkey,
+    swap_authority: Pubkey,
+    token_mint: Pubkey,
+    token_reserve: Pubkey
+) -> Instruction {
+    Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(swap_pubkey, false),
+            AccountMeta::new_readonly(sysvar::rent::id(), false),
+            AccountMeta::new_readonly(spl_token::id(), false),
+            AccountMeta::new_readonly(swap_authority, false),
+            AccountMeta::new_readonly(token_mint, false),
+            AccountMeta::new(token_reserve, false),
+        ],
+        data: SwapInstructions::InitSwap {
+            owner,
+            swapping_rate_numerator,
+            swapping_rate_denominator
+        }
+        .try_to_vec().unwrap(),
+    }
+}
+
