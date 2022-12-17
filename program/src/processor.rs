@@ -1,5 +1,4 @@
 //! Program state processor
-
 use crate::{
     error::Errors,
     instruction::Instructions,

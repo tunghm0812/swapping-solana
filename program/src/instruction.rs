@@ -1,8 +1,4 @@
 //! Instruction types
-
-// use crate::{
-//     state::{ReserveConfig, InterestRateMode},
-// };
 use solana_program::{
     instruction::{AccountMeta, Instruction},
     pubkey::{Pubkey},
