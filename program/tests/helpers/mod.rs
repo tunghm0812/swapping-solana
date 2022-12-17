@@ -241,22 +241,6 @@ pub async fn sync_native(
     banks_client.process_transaction(transaction).await;
 }
 
-// pub fn all_instructions_wrap_sol(
-//     &self,
-//     wallet_address: &Pubkey,
-//     ui_amount: f64,
-// ) -> Result<Vec<Instruction>, FarmClientError> {
-//     let target_account = self.get_associated_token_address(wallet_address, "SOL")?;
-//     let mut inst = vec![];
-//     if !self.has_active_token_account(wallet_address, "SOL") {
-//         inst.push(self.new_instruction_create_token_account(wallet_address, "SOL")?);
-//     } else {
-//         self.check_ata_owner(wallet_address, "SOL")?;
-//     }
-//     inst.push(self.new_instruction_transfer(wallet_address, &target_account, ui_amount)?);
-//     Ok(inst)
-// }
-
 pub async fn wrap_sol(
     banks_client: &mut BanksClient,
     owner: &Keypair,

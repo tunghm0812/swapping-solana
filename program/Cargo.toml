@@ -24,6 +24,7 @@ thiserror = "1.0"
 arbitrary = { version = "1.0", features = ["derive"], optional = true }
 roots = { version = "0.0.7", optional = true }
 borsh = "0.9.3"
+hex = "0.4.3"
 
 [dev-dependencies]
 proptest = "1.0"

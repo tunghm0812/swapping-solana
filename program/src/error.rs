@@ -49,6 +49,9 @@ pub enum Errors {
     /// Token transfer failed
     #[error("Token transfer failed")]
     TokenTransferFailed,
+    /// must a signer
+    #[error("must a signer")]
+    MustSigner
 }
 
 impl From<Errors> for ProgramError {

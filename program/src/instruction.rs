@@ -5,10 +5,10 @@
 // };
 use solana_program::{
     instruction::{AccountMeta, Instruction},
-    pubkey::{Pubkey, PUBKEY_BYTES},
+    pubkey::{Pubkey},
     sysvar,
 };
-use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
+use borsh::{BorshDeserialize, BorshSerialize};
 
 /// Instructions supported by the program.
 #[derive(BorshSerialize, BorshDeserialize, Clone, Debug, PartialEq)]
@@ -32,7 +32,7 @@ pub enum Instructions {
         swapping_rate_denominator: u64
     },
     // 1
-    /// Deposit SOL and Tokens to swap pool
+    /// Deposit a and b tokens to swap
     /// 
     /// Accounts expected by this instruction:
     ///
@@ -48,18 +48,20 @@ pub enum Instructions {
         amount_b: u64
     },
     // 2
-    /// Swap SOL to Tokens
+    /// Swap `from` token to `to` token
     /// 
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` swap account.
     ///   1. `[]` Token program id.
-    ///   2. `[]` Derived swap authority.
-    ///   3. `[signer]` User transfer authority.
-    ///   4. `[writable]` Source token account (swapping_token_reserve).
-    ///   5. `[writable]` Destination token account (user_account).
-    SwapSOLToTokens {
-        amount_a: u64
+    ///   2. `[signer]` User transfer authority.
+    ///   3. `[]` Swap authority.
+    ///   4. `[writable]` src token `from` account (user_account).
+    ///   5. `[writable]` dest token `from` reserve.
+    ///   6. `[writable]` src token `to` reserve.
+    ///   7. `[writable]` dest token `to` account (user_account).
+    Swap {
+        amount: u64
     },
 }
 
@@ -129,29 +131,32 @@ pub fn deposit(
     }
 }
 
-/// Creates an 'SwapSOLToTokens' instruction.
-pub fn swap_sol_to_tokens(
+/// Creates an 'Swap' instruction.
+pub fn swap(
     program_id: Pubkey,
-    amount_a: u64,
+    amount: u64,
     swap_pubkey: Pubkey,
     swap_authority: Pubkey,
     user_pubkey: Pubkey,
-    src_token_reserve: Pubkey,
-    dest_user_token_account: Pubkey,
-
+    src_from_user_account: Pubkey,
+    dst_from_reserve: Pubkey,
+    src_to_reserve: Pubkey,
+    dst_to_user_account: Pubkey
 ) -> Instruction {
     Instruction {
         program_id,
         accounts: vec![
             AccountMeta::new(swap_pubkey, false),
             AccountMeta::new_readonly(spl_token::id(), false),
-            AccountMeta::new_readonly(swap_authority, false),
             AccountMeta::new(user_pubkey, true),
-            AccountMeta::new(src_token_reserve, false),
-            AccountMeta::new(dest_user_token_account, false),
+            AccountMeta::new_readonly(swap_authority, false),
+            AccountMeta::new(src_from_user_account, false),
+            AccountMeta::new(dst_from_reserve, false),
+            AccountMeta::new(src_to_reserve, false),
+            AccountMeta::new(dst_to_user_account, false),
         ],
-        data: Instructions::SwapSOLToTokens {
-            amount_a
+        data: Instructions::Swap {
+            amount
         }
         .try_to_vec().unwrap(),
     }
