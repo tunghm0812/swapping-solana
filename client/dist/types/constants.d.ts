@@ -1,0 +1,15 @@
+import { PublicKey } from '@solana/web3.js';
+import BigNumber from 'bignumber.js';
+export declare const WAD: BigNumber;
+export declare const SUPPLY_FRACTION_BASE = 10000000000;
+export declare const U64_MAX: bigint;
+export declare const DEFAULT_TICKS_PER_SECOND = 160;
+export declare const DEFAULT_TICKS_PER_SLOT = 64;
+export declare const SECONDS_PER_DAY: number;
+export declare const SLOTS_PER_YEAR: number;
+export declare const TEST_NET_RPC = "https://api.testnet.solana.com";
+export declare const TEST_NET_SWAP_PROGRAM_ID: PublicKey;
+export declare const TOKEN_PROGRAM_ID: PublicKey;
+export declare const ASSOCIATED_TOKEN_PROGRAM_ID: PublicKey;
+export declare const BPF_LOADER_UPGRADEABLE_ID: PublicKey;
+export declare const NATIVE_MINT: PublicKey;

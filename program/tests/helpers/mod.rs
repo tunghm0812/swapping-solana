@@ -139,9 +139,9 @@ pub async fn create_swap(
     token_a_mint_pub: Pubkey,
     token_b_mint_pub: Pubkey
 ) -> SwapInfo {
-    let swap_seed = "SWAP_V1";
-    let token_a_reserve_seed = "A_RESERVE";
-    let token_b_reserve_seed = "B_RESERVE";
+    let swap_seed = "MOVE_WSOL";
+    let token_a_reserve_seed = "MOVE_RESERVE";
+    let token_b_reserve_seed = "WSOL_RESERVE";
     
     let swap_account_info = init_account_with_seed(
         banks_client, 
