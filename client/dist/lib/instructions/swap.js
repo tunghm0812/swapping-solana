@@ -36,7 +36,7 @@ exports.initSwapInstruction = function (programId, owner, rateNumberator, rateDe
         { pubkey: tokenAMint, isSigner: false, isWritable: false },
         { pubkey: tokenAReserve, isSigner: false, isWritable: true },
         { pubkey: tokenBMint, isSigner: false, isWritable: false },
-        { pubkey: tokenBReserve, isSigner: false, isWritable: true },
+        { pubkey: tokenBReserve, isSigner: false, isWritable: true }
     ];
     return new web3_js_1.TransactionInstruction({
         keys: keys,
@@ -70,7 +70,7 @@ exports.depositInstruction = function (programId, owner, moveAmount, wsolAmount,
         { pubkey: moveOwnerATA, isSigner: false, isWritable: true },
         { pubkey: moveReservePDA, isSigner: false, isWritable: true },
         { pubkey: wsolOwnerATA, isSigner: false, isWritable: true },
-        { pubkey: wsolReservePDA, isSigner: false, isWritable: true },
+        { pubkey: wsolReservePDA, isSigner: false, isWritable: true }
     ];
     return new web3_js_1.TransactionInstruction({
         keys: keys,
@@ -78,10 +78,7 @@ exports.depositInstruction = function (programId, owner, moveAmount, wsolAmount,
         data: data
     });
 };
-exports.SwapDataLayout = buffer_layout_1.struct([
-    buffer_layout_1.u8('instruction'),
-    util_1.u64('amount')
-]);
+exports.SwapDataLayout = buffer_layout_1.struct([buffer_layout_1.u8('instruction'), util_1.u64('amount')]);
 exports.swapInstruction = function (programId, owner, amount, swapPub, swapAuthority, srcFromOwnerATA, dstFromReservePDA, srcToReservePDA, dstToOwnerATA) {
     var data = Buffer.alloc(exports.SwapDataLayout.span);
     exports.SwapDataLayout.encode({
@@ -104,7 +101,7 @@ exports.swapInstruction = function (programId, owner, amount, swapPub, swapAutho
         { pubkey: srcFromOwnerATA, isSigner: false, isWritable: true },
         { pubkey: dstFromReservePDA, isSigner: false, isWritable: true },
         { pubkey: srcToReservePDA, isSigner: false, isWritable: true },
-        { pubkey: dstToOwnerATA, isSigner: false, isWritable: true },
+        { pubkey: dstToOwnerATA, isSigner: false, isWritable: true }
     ];
     return new web3_js_1.TransactionInstruction({
         keys: keys,

@@ -163,10 +163,14 @@ var Provider = /** @class */ (function () {
                             }));
                             transaction.add(instructions.createSyncNativeInstruction(wsolOwnerATAPub));
                         }
-                        srcFromOwnerATA = (fromMint.toBase58() === constants.NATIVE_MINT.toBase58()) ? wsolOwnerATAPub : moveOwnerATAPub;
-                        dstFromReservePDA = (fromMint.toBase58() === constants.NATIVE_MINT.toBase58()) ? swapInfo.tokenBReserve : swapInfo.tokenAReserve;
-                        srcToReservePDA = (fromMint.toBase58() === constants.NATIVE_MINT.toBase58()) ? swapInfo.tokenAReserve : swapInfo.tokenBReserve;
-                        dstToOwnerATA = (fromMint.toBase58() === constants.NATIVE_MINT.toBase58()) ? moveOwnerATAPub : wsolOwnerATAPub;
+                        srcFromOwnerATA = fromMint.toBase58() === constants.NATIVE_MINT.toBase58() ? wsolOwnerATAPub : moveOwnerATAPub;
+                        dstFromReservePDA = fromMint.toBase58() === constants.NATIVE_MINT.toBase58()
+                            ? swapInfo.tokenBReserve
+                            : swapInfo.tokenAReserve;
+                        srcToReservePDA = fromMint.toBase58() === constants.NATIVE_MINT.toBase58()
+                            ? swapInfo.tokenAReserve
+                            : swapInfo.tokenBReserve;
+                        dstToOwnerATA = fromMint.toBase58() === constants.NATIVE_MINT.toBase58() ? moveOwnerATAPub : wsolOwnerATAPub;
                         transaction.add(instructions.swapInstruction(programId, owner, BigInt(amount), swapPubkey, swapAuthority, srcFromOwnerATA, dstFromReservePDA, srcToReservePDA, dstToOwnerATA));
                         transaction.add(instructions.createCloseAccountInstruction(wsolOwnerATAPub, owner, owner));
                         return [2 /*return*/, transaction];

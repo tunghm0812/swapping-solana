@@ -208,7 +208,7 @@ function createCloseAccountInstruction(account, destination, authority, multiSig
     if (programId === void 0) { programId = spl_token_1.TOKEN_PROGRAM_ID; }
     var keys = addSigners([
         { pubkey: account, isSigner: false, isWritable: true },
-        { pubkey: destination, isSigner: false, isWritable: true },
+        { pubkey: destination, isSigner: false, isWritable: true }
     ], authority, multiSigners);
     var data = Buffer.alloc(exports.closeAccountInstructionData.span);
     exports.closeAccountInstructionData.encode({ instruction: instruction_1.TokenInstruction.CloseAccount }, data);

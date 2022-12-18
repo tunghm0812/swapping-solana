@@ -26,11 +26,10 @@
     node v14.20.0
 ```
 
-### Build swap client
+### Install swap client
 ```
     cd ./client
-    npm install
-    npm run build
+    yarn install
 ```
 
 ### Run swap Client
